@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.venv/
+gre_output/
+*.wav
+*.mp3
+.DS_Store

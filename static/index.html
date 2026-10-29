@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rig Reverse Engineer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0e0f13; --surface:#16181e; --surface2:#1d2027; --line:#2a2e38; --text:#eceae4; --muted:#9aa0ab;
+  --brass:#e3b04b; --brass-2:#f4d58d; --emu:#5fc4ad; --red:#e5534b; --radius:14px;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){ --bg:#f3f1ec; --surface:#ffffff; --surface2:#f7f5f0; --line:#e1ddd3; --text:#1d1c1a; --muted:#6b6862; --brass:#a8741a; --brass-2:#c58f2c; --emu:#1f8a74; }
+}
+:root[data-theme="light"]{ --bg:#f3f1ec; --surface:#ffffff; --surface2:#f7f5f0; --line:#e1ddd3; --text:#1d1c1a; --muted:#6b6862; --brass:#a8741a; --brass-2:#c58f2c; --emu:#1f8a74; }
+:root[data-theme="dark"]{ --bg:#0e0f13; --surface:#16181e; --surface2:#1d2027; --line:#2a2e38; --text:#eceae4; --muted:#9aa0ab; --brass:#e3b04b; --brass-2:#f4d58d; --emu:#5fc4ad; }
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:28px 16px 80px}
+h1,h2,h3{font-family:Archivo,Inter,sans-serif;margin:0;letter-spacing:-.01em}
+h1{font-size:clamp(28px,4.4vw,46px);font-weight:900;line-height:1.02}
+h2{font-size:20px;font-weight:800}
+.eyebrow{font:600 12px/1 Inter;letter-spacing:.14em;text-transform:uppercase;color:var(--brass)}
+.muted{color:var(--muted)}
+.mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap;margin-bottom:26px}
+header p{max-width:560px;margin:10px 0 0;color:var(--muted)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:20px}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:1.2fr 1fr}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+@media (max-width:900px){.g2,.g3{grid-template-columns:1fr}.g4{grid-template-columns:repeat(2,1fr)}}
+.drop{border:2px dashed var(--line);border-radius:12px;padding:30px 18px;text-align:center;cursor:pointer;transition:.15s;background:var(--surface2)}
+.drop:hover,.drop.over{border-color:var(--brass);background:color-mix(in srgb,var(--brass) 7%,var(--surface2))}
+.drop strong{display:block;font-size:17px;margin-bottom:4px}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+label.small{font-size:12px;color:var(--muted);display:block;margin-bottom:4px}
+input[type=number]{width:110px;background:var(--surface2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:8px 10px;font:inherit}
+.btn{appearance:none;border:0;border-radius:10px;padding:11px 18px;font:700 14px Inter;cursor:pointer;background:var(--brass);color:#1a1408;transition:.15s}
+.btn:hover{filter:brightness(1.08)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
+.btn.ghost:hover{border-color:var(--brass)}
+.btn.sm{padding:7px 12px;font-size:13px}
+.file-pill{display:inline-flex;gap:8px;align-items:center;background:var(--surface2);border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:13px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.progress{height:8px;background:var(--surface2);border-radius:99px;overflow:hidden;border:1px solid var(--line)}
+.progress>div{height:100%;width:0;background:linear-gradient(90deg,var(--brass),var(--brass-2));transition:width .4s}
+.hidden{display:none!important}
+.hero{display:grid;grid-template-columns:1fr auto;gap:18px;align-items:end}
+@media (max-width:700px){.hero{grid-template-columns:1fr}}
+.hero .amp{font:900 clamp(26px,3.6vw,38px)/1.05 Archivo}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.chip{border:1px solid var(--line);background:var(--surface2);border-radius:999px;padding:4px 11px;font-size:13px;font-weight:600}
+.chip.brass{border-color:color-mix(in srgb,var(--brass) 55%,transparent);color:var(--brass)}
+.score{font:900 44px/1 Archivo;color:var(--emu)}
+.rigpic{border-radius:12px;overflow:hidden;border:1px solid var(--line);background:#11131a}
+.rigpic svg{display:block;width:100%;height:auto}
+.ab{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.play{width:52px;height:52px;border-radius:50%;border:0;background:var(--brass);cursor:pointer;display:grid;place-items:center;flex:none}
+.play svg{width:20px;height:20px;fill:#1a1408}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{background:transparent;border:0;color:var(--muted);padding:9px 14px;font:600 13px Inter;cursor:pointer}
+.seg button.on{background:var(--surface2);color:var(--text);box-shadow:inset 0 -2px 0 var(--brass)}
+.seek{flex:1;min-width:160px;accent-color:var(--brass)}
+.metric{background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:14px}
+.metric .k{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+.metric .v{font:700 20px/1.2 Archivo;margin-top:6px}
+.metric .s{font-size:12.5px;color:var(--muted);margin-top:3px}
+.chain{display:flex;gap:10px;flex-wrap:wrap;align-items:stretch}
+.node{background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;min-width:150px;flex:1}
+.node .t{font:800 14px Archivo}
+.node .l{font-size:12px;color:var(--brass);font-weight:600;margin-top:2px}
+.node .d{font-size:12.5px;color:var(--muted);margin-top:6px}
+.arrow{align-self:center;color:var(--muted)}
+.steps{counter-reset:s;display:grid;gap:12px}
+.step{display:grid;grid-template-columns:34px 1fr;gap:12px;background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:14px}
+.step:before{counter-increment:s;content:counter(s);width:30px;height:30px;border-radius:50%;background:var(--brass);color:#1a1408;display:grid;place-items:center;font:800 14px Archivo}
+.step h3{font-size:15px;margin-bottom:6px}
+.step ul{margin:0;padding-left:18px;color:var(--text)}
+.step li{margin:2px 0;font-size:14px}
+.dl{display:flex;gap:10px;flex-wrap:wrap}
+.dl a{text-decoration:none}
+.cand{display:grid;grid-template-columns:1fr 120px 44px;gap:10px;align-items:center;font-size:14px;padding:6px 0;border-bottom:1px solid var(--line)}
+.cand:last-child{border:0}
+.bar{height:7px;border-radius:9px;background:var(--surface2);overflow:hidden}
+.bar>div{height:100%;background:var(--brass)}
+.warn{border-left:3px solid var(--red);padding:10px 12px;background:color-mix(in srgb,var(--red) 8%,transparent);border-radius:6px;font-size:14px}
+.legend{display:flex;gap:16px;font-size:13px;color:var(--muted)}
+.legend i{display:inline-block;width:18px;height:3px;border-radius:2px;vertical-align:middle;margin-right:6px}
+svg text{font-family:Inter,sans-serif}
+.err{color:var(--red);font-weight:600}
+.theme{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:8px;padding:6px 10px;cursor:pointer;font:600 12px Inter}
+footer{margin-top:40px;color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="eyebrow">Guitar tone forensics</div>
+      <h1>Rig Reverse Engineer</h1>
+      <p>Drop in a recording of a guitar part. You get its sound profile, a best guess at the pedals, amp, cab and effects behind it, a Logic Pro kit to rebuild it, and an emulation to A/B against the original.</p>
+    </div>
+    <button class="theme" id="themeBtn" title="Toggle theme">◐ Theme</button>
+  </header>
+
+  <section class="card" id="uploadCard">
+    <div class="grid g2">
+      <div>
+        <div class="drop" id="drop">
+          <strong>Drop a guitar recording here</strong>
+          <span class="muted">or click to browse · WAV, MP3, FLAC, AIFF, M4A · up to 40 MB · first 45 s analysed</span>
+          <input type="file" id="audio" accept="audio/*,.wav,.mp3,.flac,.aif,.aiff,.m4a,.ogg" hidden>
+        </div>
+        <div class="row" style="margin-top:12px"><span class="file-pill hidden" id="audioName"></span></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px;justify-content:space-between">
+        <div>
+          <label class="small">Start at (seconds)</label>
+          <input type="number" id="start" value="0" min="0" step="0.5">
+        </div>
+        <div>
+          <label class="small">Optional: your own dry DI to run through the estimated rig</label>
+          <div class="row">
+            <button class="btn ghost sm" id="diBtn">Choose DI file</button>
+            <span class="file-pill hidden" id="diName"></span>
+            <input type="file" id="di" accept="audio/*" hidden>
+          </div>
+        </div>
+        <div class="row">
+          <button class="btn" id="go" disabled>Analyse tone</button>
+          <button class="btn ghost" id="demo">Try a demo riff</button>
+        </div>
+      </div>
+    </div>
+    <p class="muted" style="font-size:13px;margin:14px 0 0">Best results: an isolated guitar track (stems, solo sections, your own recordings). Full mixes work less well.</p>
+  </section>
+
+  <section class="card hidden" id="progCard" style="margin-top:16px">
+    <div class="row" style="justify-content:space-between;margin-bottom:10px">
+      <strong id="progMsg">Starting…</strong><span class="muted mono" id="progPct">0%</span>
+    </div>
+    <div class="progress"><div id="progBar"></div></div>
+    <p class="muted" style="font-size:13px;margin:10px 0 0">This takes about a minute: it transcribes the playing, then auditions amp models and effect settings until the re-played version measures like your clip.</p>
+  </section>
+
+  <div id="results" class="hidden" style="margin-top:22px;display:grid;gap:16px"></div>
+
+  <footer>Estimates come from signal analysis plus analysis-by-synthesis. Amp-model guesses are probabilistic: several amps can sound alike once EQ'd, so check the alternatives.</footer>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let audioFile = null, diFile = null;
+
+// theme
+(() => { try { const t = localStorage.getItem("gre-theme"); if (t) document.documentElement.dataset.theme = t; } catch(e){} })();
+$("#themeBtn").onclick = () => {
+  const cur = document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+  const nxt = cur === "light" ? "dark" : "light";
+  document.documentElement.dataset.theme = nxt;
+  try { localStorage.setItem("gre-theme", nxt); } catch(e){}
+};
+
+// upload UI
+const drop = $("#drop");
+drop.onclick = () => $("#audio").click();
+drop.ondragover = e => { e.preventDefault(); drop.classList.add("over"); };
+drop.ondragleave = () => drop.classList.remove("over");
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove("over"); if (e.dataTransfer.files[0]) setAudio(e.dataTransfer.files[0]); };
+$("#audio").onchange = e => e.target.files[0] && setAudio(e.target.files[0]);
+function setAudio(f){ audioFile = f; const p = $("#audioName"); p.textContent = "🎸 " + f.name; p.classList.remove("hidden"); $("#go").disabled = false; }
+$("#diBtn").onclick = () => $("#di").click();
+$("#di").onchange = e => { diFile = e.target.files[0]; const p = $("#diName"); if (diFile){ p.textContent = diFile.name; p.classList.remove("hidden"); } };
+
+$("#go").onclick = async () => {
+  if (!audioFile) return;
+  const fd = new FormData();
+  fd.append("audio", audioFile);
+  if (diFile) fd.append("di", diFile);
+  fd.append("start", $("#start").value || "0");
+  start(fetch("/api/jobs", {method:"POST", body:fd}));
+};
+$("#demo").onclick = () => start(fetch("/api/demo", {method:"POST"}));
+
+async function start(req){
+  $("#go").disabled = true; $("#demo").disabled = true;
+  $("#results").classList.add("hidden"); $("#results").innerHTML = "";
+  $("#progCard").classList.remove("hidden"); setProg("Uploading…", 0.01);
+  try {
+    const r = await req; const j = await r.json();
+    if (!r.ok) throw new Error(j.detail || "Upload failed");
+    poll(j.id);
+  } catch(e){ fail(e.message); }
+}
+function setProg(m, f){ $("#progMsg").textContent = m; $("#progPct").textContent = Math.round(f*100) + "%"; $("#progBar").style.width = (f*100) + "%"; }
+function fail(m){ $("#progMsg").innerHTML = `<span class="err">${esc(m)}</span>`; $("#go").disabled = !audioFile; $("#demo").disabled = false; }
+async function poll(id){
+  try {
+    const r = await fetch(`/api/jobs/${id}`); const j = await r.json();
+    if (!r.ok) return fail(j.detail || "Job lost");
+    if (j.status === "error") return fail(j.message);
+    setProg(j.message || j.status, j.progress || 0);
+    if (j.status === "done") { $("#progCard").classList.add("hidden"); $("#go").disabled = !audioFile; $("#demo").disabled = false; return render(id, j.result, j.name); }
+    setTimeout(() => poll(id), 1000);
+  } catch(e){ setTimeout(() => poll(id), 2000); }
+}
+
+// ---------- charts
+function spectrumChart(freqs, a, b){
+  const W = 760, H = 280, L = 44, R = 12, T = 14, B = 34;
+  const fx = f => L + (Math.log10(f) - Math.log10(30)) / (Math.log10(18000) - Math.log10(30)) * (W - L - R);
+  const sel = freqs.map((f,i) => f > 200 && f < 4000 ? i : -1).filter(i => i >= 0);
+  const norm = arr => { const m = sel.reduce((s,i) => s + arr[i], 0) / sel.length; return arr.map(v => v - m); };
+  const A = norm(a), Bv = b ? norm(b) : null;
+  const lo = -50, hi = 15;
+  const fy = v => T + (hi - Math.max(lo, Math.min(hi, v))) / (hi - lo) * (H - T - B);
+  const path = arr => arr.map((v,i) => (i ? "L" : "M") + fx(freqs[i]).toFixed(1) + "," + fy(v).toFixed(1)).join("");
+  let g = "";
+  for (const f of [50,100,200,500,1000,2000,5000,10000]) {
+    g += `<line x1="${fx(f)}" x2="${fx(f)}" y1="${T}" y2="${H-B}" stroke="var(--line)"/>`;
+    g += `<text x="${fx(f)}" y="${H-B+18}" font-size="11" fill="var(--muted)" text-anchor="middle">${f>=1000?f/1000+"k":f}</text>`;
+  }
+  for (let v = -40; v <= 10; v += 10) {
+    g += `<line x1="${L}" x2="${W-R}" y1="${fy(v)}" y2="${fy(v)}" stroke="var(--line)" stroke-dasharray="${v===0?"":"2 4"}"/>`;
+    g += `<text x="${L-8}" y="${fy(v)+4}" font-size="11" fill="var(--muted)" text-anchor="end">${v}</text>`;
+  }
+  const bands = [["Low",80,250],["Low-mid",250,500],["Mid",500,1500],["High-mid",1500,3000],["Presence",3000,6000],["Air",6000,12000]];
+  bands.forEach(([n,l,h],k) => { g += `<text x="${(fx(l)+fx(h))/2}" y="${T+12}" font-size="10" fill="var(--muted)" text-anchor="middle" opacity=".8">${n}</text>`; });
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Spectrum: original vs emulation">${g}
+    <path d="${path(A)}" fill="none" stroke="var(--brass)" stroke-width="2.4"/>
+    ${Bv ? `<path d="${path(Bv)}" fill="none" stroke="var(--emu)" stroke-width="2" stroke-dasharray="6 4"/>` : ""}
+    <text x="${W-R}" y="${H-4}" font-size="11" fill="var(--muted)" text-anchor="end">Hz · dB relative to mids</text></svg>`;
+}
+function eqChart(bands){
+  const W = 380, H = 150, L = 30, R = 8, T = 10, B = 22;
+  const fx = f => L + (Math.log10(f) - Math.log10(40)) / (Math.log10(12000) - Math.log10(40)) * (W - L - R);
+  const fy = v => T + (12 - Math.max(-12, Math.min(12, v))) / 24 * (H - T - B);
+  const fs = []; for (let i = 0; i < 160; i++) fs.push(40 * Math.pow(12000/40, i/159));
+  const resp = fs.map(f => bands.reduce((s,b) => { const bw = Math.log2(f/b.f) * b.q * 1.2; return s + b.g * Math.exp(-bw*bw); }, 0));
+  let g = `<line x1="${L}" x2="${W-R}" y1="${fy(0)}" y2="${fy(0)}" stroke="var(--line)"/>`;
+  for (const f of [100,1000,10000]) g += `<text x="${fx(f)}" y="${H-6}" font-size="10" fill="var(--muted)" text-anchor="middle">${f>=1000?f/1000+"k":f}</text>`;
+  for (const v of [-12,12]) g += `<text x="${L-6}" y="${fy(v)+4}" font-size="10" fill="var(--muted)" text-anchor="end">${v>0?"+":""}${v}</text>`;
+  const p = resp.map((v,i) => (i?"L":"M") + fx(fs[i]).toFixed(1) + "," + fy(v).toFixed(1)).join("");
+  bands.forEach(b => g += `<circle cx="${fx(b.f)}" cy="${fy(b.g)}" r="3.5" fill="var(--brass)"/>`);
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Match EQ curve">${g}<path d="${p}" fill="none" stroke="var(--brass)" stroke-width="2"/></svg>`;
+}
+
+// ---------- A/B player
+function setupAB(id, hasUserDi){
+  const srcs = {orig:"original.wav", emu:"emulation.wav", di:"di_resynth.wav"};
+  if (hasUserDi) srcs.mine = "your_di_through_rig.wav";
+  const els = {}; for (const [k,f] of Object.entries(srcs)) { const a = new Audio(`/api/jobs/${id}/files/${f}`); a.preload = "auto"; els[k] = a; }
+  let cur = "orig", playing = false;
+  const seek = $("#seek"), btn = $("#playBtn");
+  const icon = p => btn.innerHTML = p ? '<svg viewBox="0 0 24 24"><rect x="5" y="4" width="5" height="16"/><rect x="14" y="4" width="5" height="16"/></svg>' : '<svg viewBox="0 0 24 24"><path d="M6 4l15 8-15 8z"/></svg>';
+  icon(false);
+  const sync = () => { const t = els[cur].currentTime; for (const [k,a] of Object.entries(els)) { a.muted = k !== cur; if (k !== cur && Math.abs(a.currentTime - t) > 0.08 && k !== "mine") a.currentTime = t; } };
+  btn.onclick = () => { playing = !playing; icon(playing); for (const [k,a] of Object.entries(els)) { if (k === "mine" && cur !== "mine") continue; playing ? a.play().catch(()=>{}) : a.pause(); } sync(); };
+  document.querySelectorAll("#abSeg button").forEach(b => b.onclick = () => {
+    document.querySelectorAll("#abSeg button").forEach(x => x.classList.toggle("on", x === b));
+    const t = els[cur].currentTime; cur = b.dataset.k;
+    if (cur !== "mine") els[cur].currentTime = t;
+    if (playing) { for (const [k,a] of Object.entries(els)) { if (k === "mine") { cur === "mine" ? a.play() : a.pause(); } } }
+    sync();
+  });
+  setInterval(() => { const a = els[cur]; if (a.duration) seek.value = a.currentTime / a.duration * 1000; $("#abTime").textContent = a.currentTime.toFixed(1) + " s"; }, 150);
+  seek.oninput = () => { for (const [k,a] of Object.entries(els)) if (a.duration && (k !== "mine" || cur === "mine")) a.currentTime = seek.value / 1000 * els[cur].duration; };
+  els.orig.onended = () => { playing = false; icon(false); };
+}
+
+// ---------- results
+const fmt = (v, d=1, u="") => v === null || v === undefined || Number.isNaN(v) ? "—" : (+v).toFixed(d) + u;
+function render(id, r, name){
+  const s = r.summary, p = r.profile, rig = r.rig, rep = r.estimate_report;
+  const file = n => `/api/jobs/${id}/files/${n}`;
+  const hasMine = r.files.includes("your_di_through_rig.wav");
+  const effectChips = (s.effects.length ? s.effects : ["No effects detected"]).map(e => `<span class="chip">${esc(e)}</span>`).join("");
+  const d = p.delay, rv = rig.reverb, tr = p.modulation.tremolo;
+  const nodeDesc = n => {
+    const st = n.settings || {};
+    switch (n.kind) {
+      case "amp": return `Gain ${fmt(st.gain)} · Bass ${fmt(st.bass)} · Mid ${fmt(st.mid)} · Treble ${fmt(st.treble)} · Pres ${fmt(st.presence)}`;
+      case "drive": return `Drive ${fmt(st.gain)} · Tone ${fmt(st.tone)} · Level ${fmt(st.level)}`;
+      case "cab": return `${esc(n.real)} · cut ${fmt(st.low_cut,0)}–${fmt(st.high_cut,0)} Hz`;
+      case "eq": return `${st.bands.length} bands of tone matching`;
+      case "delay": return `${fmt(st.time_ms,0)} ms · fb ${fmt(st.feedback*100,0)}% · mix ${fmt(100*st.mix/(1+st.mix),0)}%`;
+      case "reverb": return `${fmt(st.decay_s,2)} s decay · mix ${fmt(100*st.mix/(1+st.mix),0)}%`;
+      case "mod": return `${esc(st.type)} ${fmt(st.rate_hz,2)} Hz · depth ${fmt(st.depth*100,0)}%`;
+      case "gate": return `Threshold ${fmt(st.threshold_db,0)} dB`;
+      case "compressor": return `Threshold ${fmt(st.threshold_db,0)} dB · ${fmt(st.ratio,1)}:1`;
+    } return "";
+  };
+  const chain = r.chain.map((n,i) => `${i ? '<div class="arrow">→</div>' : ""}<div class="node"><div class="t">${esc(n.name)}</div><div class="l">Logic: ${esc(n.logic)}</div><div class="d">${nodeDesc(n)}</div></div>`).join("");
+  const steps = r.logic_steps.map(st => `<div class="step"><div><h3>${esc(st.plugin)}</h3><ul>${st.settings.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div></div>`).join("");
+  const cands = rep.amp_candidates.map(c => `<div class="cand"><div><strong>${esc(c.logic_amp)}</strong> <span class="muted">≈ ${esc(c.real)}</span></div><div class="bar"><div style="width:${Math.round(c.confidence*100)}%"></div></div><div class="mono muted">${Math.round(c.confidence*100)}%</div></div>`).join("");
+  const warns = (p.warnings || []).map(w => `<div class="warn">${esc(w)}</div>`).join("");
+  const bandRows = Object.entries(p.tone.bands_db).map(([k,v]) => `<div class="cand" style="grid-template-columns:90px 1fr 56px"><div>${esc(k)}</div><div class="bar" style="position:relative"><div style="position:absolute;left:${v<0?50+Math.max(-50,v*1.6):50}%;width:${Math.min(50,Math.abs(v)*1.6)}%;background:${v<0?'var(--muted)':'var(--brass)'}"></div></div><div class="mono muted" style="text-align:right">${v>0?"+":""}${fmt(v)}</div></div>`).join("");
+  const rigSvgId = "rigsvg";
+
+  $("#results").innerHTML = `
+  <section class="card">
+    <div class="hero">
+      <div>
+        <div class="eyebrow">Best guess · ${esc(name || "your clip")}</div>
+        <div class="amp" style="margin-top:8px">${esc(s.amp)} <span class="muted" style="font-weight:700">≈ ${esc(s.amp_real)}</span></div>
+        <div class="chips"><span class="chip brass">Logic: ${esc(s.logic_amp)} + ${esc(s.logic_cab)}</span><span class="chip brass">${esc(s.gain_character)}</span>${effectChips}</div>
+      </div>
+      <div style="text-align:right"><div class="score">${fmt(r.match.tone_score,0)}</div><div class="muted" style="font-size:13px">tone match / 100<br>(emulation vs original)</div></div>
+    </div>
+    ${warns ? `<div style="display:grid;gap:8px;margin-top:14px">${warns}</div>` : ""}
+  </section>
+
+  <section class="card">
+    <div class="row" style="justify-content:space-between;margin-bottom:12px"><h2>The rig</h2><a class="btn ghost sm" href="${file("rig.svg")}?download=1">Download picture (SVG)</a></div>
+    <div class="rigpic" id="${rigSvgId}"></div>
+  </section>
+
+  <section class="card">
+    <h2 style="margin-bottom:12px">Listen: original vs emulation</h2>
+    <div class="ab">
+      <button class="play" id="playBtn" aria-label="Play/pause"></button>
+      <div class="seg" id="abSeg"><button class="on" data-k="orig">Original</button><button data-k="emu">Emulation</button><button data-k="di">Dry DI</button>${hasMine ? '<button data-k="mine">Your DI + rig</button>' : ""}</div>
+      <input type="range" class="seek" id="seek" min="0" max="1000" value="0"><span class="mono muted" id="abTime">0.0 s</span>
+    </div>
+    <p class="muted" style="font-size:13px;margin:12px 0 0">The emulation is your performance, transcribed and re-played by a synthetic guitar through the estimated rig, so judge the tone and effects rather than the playing. Switching keeps your place.</p>
+  </section>
+
+  <section class="grid g2">
+    <div class="card">
+      <div class="row" style="justify-content:space-between;margin-bottom:10px"><h2>Sound profile</h2><div class="legend"><span><i style="background:var(--brass)"></i>Original</span><span><i style="background:var(--emu)"></i>Emulation</span></div></div>
+      ${spectrumChart(r.freqs, p.tone.spectrum_db, r.emulation_profile.spectrum_db)}
+    </div>
+    <div class="card">
+      <h2 style="margin-bottom:10px">Tonal balance</h2>
+      ${bandRows}
+      <div class="muted" style="font-size:12.5px;margin-top:10px">dB relative to 200 Hz–4 kHz. Mid scoop ${fmt(p.tone.mid_scoop_db)} dB · brightness centroid ${fmt(p.tone.centroid_hz,0)} Hz · cab roll-off ≈ ${fmt(p.tone.high_cut_hz,0)} Hz</div>
+    </div>
+  </section>
+
+  <section class="grid g4">
+    <div class="metric"><div class="k">Gain</div><div class="v">${esc(s.gain_character)}</div><div class="s">crest ${fmt(p.distortion.crest_db)} dB · sustain ${fmt(p.distortion.note_decay_db_s)} dB/s decay</div></div>
+    <div class="metric"><div class="k">Delay</div><div class="v">${rig.delay.on ? fmt(rig.delay.time_ms,0," ms") : "None"}</div><div class="s">${rig.delay.on ? `feedback ${fmt(rig.delay.feedback*100,0)}% · mix ${fmt(100*rig.delay.mix/(1+rig.delay.mix),0)}%` : "no exact echoes found"}</div></div>
+    <div class="metric"><div class="k">Reverb</div><div class="v">${rv.on ? esc(rv.type[0].toUpperCase()+rv.type.slice(1)) : "Dry / none"}</div><div class="s">${rv.on ? `decay ${fmt(rv.decay_s,2)} s · mix ${fmt(100*rv.mix/(1+rv.mix),0)}%` : "short or no tail after stops"}</div></div>
+    <div class="metric"><div class="k">Modulation</div><div class="v">${rig.mod.type === "none" ? "None" : esc(rig.mod.type)}</div><div class="s">${rig.mod.type !== "none" ? `${fmt(rig.mod.rate_hz,2)} Hz · depth ${fmt(rig.mod.depth*100,0)}%` : "stereo corr " + fmt(p.modulation.stereo_correlation,2)}</div></div>
+    <div class="metric"><div class="k">Dynamics</div><div class="v">${rig.compressor.on ? "Compressed" : "Natural"}${rig.gate.on ? " + gate" : ""}</div><div class="s">range ${fmt(p.dynamics.dynamic_range_db)} dB · floor ${fmt(p.dynamics.noise_floor_dbfs,0)} dBFS</div></div>
+    <div class="metric"><div class="k">Tuning</div><div class="v">${esc((p.tuning||{}).tuning_guess || "—")}</div><div class="s">A4 ≈ ${fmt((p.tuning||{}).a4_reference_hz,1," Hz")}</div></div>
+    <div class="metric"><div class="k">Performance</div><div class="v">${r.events} events</div><div class="s">top notes: ${Object.keys(r.notes_histogram).slice(0,5).join(", ") || "—"}</div></div>
+    <div class="metric"><div class="k">Match</div><div class="v">${fmt(r.match.tone_rms_db,1)} dB RMS</div><div class="s">crest ${fmt(r.match.crest_db[0])} → ${fmt(r.match.crest_db[1])} dB</div></div>
+  </section>
+
+  <section class="card">
+    <h2 style="margin-bottom:12px">Signal chain</h2>
+    <div class="chain">${chain}</div>
+  </section>
+
+  <section class="grid g2">
+    <div class="card">
+      <div class="row" style="justify-content:space-between;margin-bottom:12px"><h2>Build it in Logic Pro</h2></div>
+      <div class="dl" style="margin-bottom:14px">
+        <a class="btn" href="${file("logic_kit.zip")}?download=1">Download Logic kit (.zip)</a>
+        <a class="btn ghost sm" href="${file("LOGIC_SETUP.md")}?download=1">Setup sheet</a>
+        <a class="btn ghost sm" href="${file("emulation.wav")}?download=1">emulation.wav</a>
+        <a class="btn ghost sm" href="${file("di_resynth.wav")}?download=1">DI (wav)</a>
+        <a class="btn ghost sm" href="${file("performance.mid")}?download=1">MIDI</a>
+        <a class="btn ghost sm" href="${file("cab_tone_ir.wav")}?download=1">Cab IR</a>
+      </div>
+      <div class="steps">${steps}</div>
+    </div>
+    <div style="display:grid;gap:16px;align-content:start">
+      <div class="card"><h2 style="margin-bottom:8px">Amp model candidates</h2>${cands}</div>
+      <div class="card"><h2 style="margin-bottom:8px">Match EQ</h2>${rig.eq.length ? eqChart(rig.eq) : '<p class="muted">No correction needed.</p>'}<p class="muted" style="font-size:12.5px;margin:6px 0 0">Applied after the amp + cab to land on the original's tone. Use Channel EQ with these bands, Logic's Match EQ, or the cab IR in Space Designer.</p></div>
+      <div class="card"><h2 style="margin-bottom:8px">What's in the kit</h2>
+        <ul style="margin:0;padding-left:18px;font-size:14px;color:var(--muted)">
+          <li><strong style="color:var(--text)">di_resynth.wav</strong>: drop on a track, add the chain → hear the emulation inside Logic</li>
+          <li><strong style="color:var(--text)">cab_tone_ir.wav / reverb_ir.wav</strong>: load in Space Designer</li>
+          <li><strong style="color:var(--text)">presets/</strong>: Apple AU presets (experimental) + installer</li>
+          <li><strong style="color:var(--text)">performance.mid</strong>: the transcribed notes</li>
+        </ul></div>
+    </div>
+  </section>`;
+  $("#results").classList.remove("hidden");
+  fetch(file("rig.svg")).then(x => x.text()).then(t => $("#" + rigSvgId).innerHTML = t);
+  setupAB(id, hasMine);
+  $("#results").scrollIntoView({behavior:"smooth", block:"start"});
+}
+</script>
+</body>
+</html>

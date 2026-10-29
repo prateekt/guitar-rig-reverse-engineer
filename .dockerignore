@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.git/
+gre_output/
+*.wav
+*.mp3
+.venv/
